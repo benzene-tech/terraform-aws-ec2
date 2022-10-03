@@ -1,54 +1,65 @@
-variable "name" {
-  type     = string
-  nullable = false
+variable "name_prefix" {
+  description = "Prefix for resource and tag names"
+  type        = string
+  nullable    = false
+}
+
+variable "ingress_cidr_blocks" {
+  description = "Ingress CIDRs for EC2"
+  default     = ["0.0.0.0/0"]
+  type        = list(string)
+  nullable    = false
 }
 
 # VPC
 variable "vpc_cidr_block" {
-  type     = string
-  nullable = false
+  description = "VPC CIDR"
+  type        = string
+  nullable    = false
 }
 
 variable "public_subnets_count" {
-  default  = 2
-  type     = number
-  nullable = false
+  description = "Number of public subnets to create. If load balancer is enabled, public_subnet_count value should be minimum of 2"
+  default     = 2
+  type        = number
+  nullable    = false
 
   validation {
     condition     = var.public_subnets_count % 1 == 0
     error_message = "Number of public subnets should be a whole number"
   }
-
-  validation {
-    condition     = var.public_subnets_count > 1
-    error_message = "Minimum of two public subnets are required"
-  }
 }
 
 # Instance
 variable "instance_ami" {
-  type     = string
-  nullable = false
+  description = "AMI of the instance"
+  type        = string
+  nullable    = false
 }
 
 variable "instance_type" {
-  type     = string
-  nullable = false
+  description = "Type of the instance"
+  type        = string
+  nullable    = false
 }
 
 variable "user_data_path" {
-  default = null
-  type    = string
+  description = "Path to the user data file"
+  default     = null
+  type        = string
 }
 
 variable "user_data_arguments" {
-  default = {}
-  type    = map(any)
+  description = "User data arguments. Required only if user_data_path is defined"
+  default     = {}
+  type        = map(any)
+  nullable    = false
 }
 
 variable "port" {
-  type     = number
-  nullable = false
+  description = "Port in which application is running"
+  type        = number
+  nullable    = false
 
   validation {
     condition     = var.port % 1 == 0
@@ -57,8 +68,9 @@ variable "port" {
 }
 
 # Load balancer
-variable "ingress_cidr_blocks" {
-  default  = ["0.0.0.0/0"]
-  type     = list(string)
-  nullable = false
+variable "enable_load_balancer" {
+  description = "Switch to enable or disable load balancer"
+  default     = false
+  type        = bool
+  nullable    = false
 }

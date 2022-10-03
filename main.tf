@@ -32,17 +32,17 @@ resource "aws_instance" "this" {
   }
 
   tags = {
-    Name = "${var.name}_instance"
+    Name = "${var.name_prefix}_instance"
   }
 }
 
 resource "aws_iam_instance_profile" "this" {
-  name = "${var.name}-iam-instance-profile"
+  name = "${var.name_prefix}-iam-instance-profile"
   role = aws_iam_role.this.name
 }
 
 resource "aws_iam_role" "this" {
-  name               = "${var.name}-iam-role"
+  name               = "${var.name_prefix}-iam-role"
   assume_role_policy = local.assume_role_policy
 }
 
@@ -52,7 +52,7 @@ resource "aws_iam_role_policy_attachment" "this" {
 }
 
 resource "aws_security_group" "this_instance" {
-  name   = "${var.name}-instance-security-group"
+  name   = "${var.name_prefix}-instance-security-group"
   vpc_id = aws_vpc.this.id
 
   egress {
@@ -66,10 +66,11 @@ resource "aws_security_group" "this_instance" {
     from_port       = var.port
     to_port         = var.port
     protocol        = "tcp"
-    security_groups = [aws_security_group.this_lb.id]
+    cidr_blocks     = var.enable_load_balancer ? null : var.ingress_cidr_blocks
+    security_groups = var.enable_load_balancer ? [aws_security_group.this_lb[0].id] : null
   }
 
   tags = {
-    Name = "${var.name}_instance_security_group"
+    Name = "${var.name_prefix}_instance_security_group"
   }
 }

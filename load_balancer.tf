@@ -1,32 +1,40 @@
 resource "aws_lb" "this" {
-  name                             = "${var.name}-lb"
+  count = var.enable_load_balancer ? 1 : 0
+
+  name                             = "${var.name_prefix}-lb"
   internal                         = false
   load_balancer_type               = "application"
   subnets                          = [for subnet in aws_subnet.this_public : subnet.id]
-  security_groups                  = [aws_security_group.this_lb.id]
+  security_groups                  = [aws_security_group.this_lb[0].id]
   enable_cross_zone_load_balancing = true
   drop_invalid_header_fields       = true
 
   tags = {
-    Name = "${var.name}_lb"
+    Name = "${var.name_prefix}_lb"
   }
 }
 
 resource "aws_lb_target_group" "this" {
-  name     = "${var.name}-lb-target-group"
+  count = var.enable_load_balancer ? 1 : 0
+
+  name     = "${var.name_prefix}-lb-target-group"
   port     = var.port
   protocol = "HTTP"
   vpc_id   = aws_vpc.this.id
 }
 
 resource "aws_lb_target_group_attachment" "this" {
-  target_group_arn = aws_lb_target_group.this.arn
+  count = var.enable_load_balancer ? 1 : 0
+
+  target_group_arn = aws_lb_target_group.this[0].arn
   target_id        = aws_instance.this.id
   port             = var.port
 }
 
 resource "aws_lb_listener" "this" {
-  load_balancer_arn = aws_lb.this.arn
+  count = var.enable_load_balancer ? 1 : 0
+
+  load_balancer_arn = aws_lb.this[0].arn
   port              = "80"
   protocol          = "HTTP"
 
@@ -35,7 +43,7 @@ resource "aws_lb_listener" "this" {
 
     forward {
       target_group {
-        arn = aws_lb_target_group.this.arn
+        arn = aws_lb_target_group.this[0].arn
       }
 
       stickiness {
@@ -46,7 +54,9 @@ resource "aws_lb_listener" "this" {
 }
 
 resource "aws_security_group" "this_lb" {
-  name   = "${var.name}-lb-security-group"
+  count = var.enable_load_balancer ? 1 : 0
+
+  name   = "${var.name_prefix}-lb-security-group"
   vpc_id = aws_vpc.this.id
 
   egress {
@@ -64,6 +74,6 @@ resource "aws_security_group" "this_lb" {
   }
 
   tags = {
-    Name = "${var.name}_lb_security_group"
+    Name = "${var.name_prefix}_lb_security_group"
   }
 }
