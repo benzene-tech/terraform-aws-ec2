@@ -25,9 +25,28 @@ variable "public_subnets_count" {
   nullable    = false
 
   validation {
-    condition     = var.public_subnets_count % 1 == 0
-    error_message = "Number of public subnets should be a whole number"
+    condition     = var.public_subnets_count % 1 == 0 && var.public_subnets_count > 0
+    error_message = "Number of public subnets should be a non zero whole number"
   }
+}
+
+variable "private_subnets_count" {
+  description = "Number of private subnets to create"
+  default     = 0
+  type        = number
+  nullable    = false
+
+  validation {
+    condition     = var.private_subnets_count % 1 == 0 && var.private_subnets_count >= 0
+    error_message = "Number of private subnets should be a whole number"
+  }
+}
+
+variable "enable_nat_gateway" {
+  description = "Switch to enable or disable NAT gateway"
+  default     = false
+  type        = bool
+  nullable    = false
 }
 
 # Instance
