@@ -12,6 +12,6 @@ module "ec2" {
   instance_ami   = "ami-12345"
   instance_type  = "t2.micro"
   port           = 80
-  name           = "example"
+  name_prefix    = "example"
 }
 ```

@@ -16,7 +16,7 @@ resource "aws_vpc" "this" {
   }
 }
 
-resource "aws_subnet" "this_public" {
+resource "aws_subnet" "public" {
   count = length(local.public_cidr_subnets)
 
   vpc_id                  = aws_vpc.this.id
@@ -29,18 +29,6 @@ resource "aws_subnet" "this_public" {
   }
 }
 
-resource "aws_subnet" "this_private" {
-  count = length(local.private_cidr_subnets)
-
-  vpc_id            = aws_vpc.this.id
-  cidr_block        = local.private_cidr_subnets[count.index]
-  availability_zone = count.index < local.availability_zones_count ? data.aws_availability_zones.available.names[count.index] : data.aws_availability_zones.available.names[count.index % local.availability_zones_count]
-
-  tags = {
-    Name = "${var.name_prefix}_private_subnet_${count.index + 1}"
-  }
-}
-
 resource "aws_internet_gateway" "this" {
   vpc_id = aws_vpc.this.id
 
@@ -49,7 +37,7 @@ resource "aws_internet_gateway" "this" {
   }
 }
 
-resource "aws_route_table" "this_public" {
+resource "aws_route_table" "public" {
   vpc_id = aws_vpc.this.id
 
   route {
@@ -62,14 +50,66 @@ resource "aws_route_table" "this_public" {
   }
 }
 
-resource "aws_route_table_association" "this_public" {
+resource "aws_route_table_association" "public" {
   count = length(local.public_cidr_subnets)
 
-  subnet_id      = aws_subnet.this_public[count.index].id
-  route_table_id = aws_route_table.this_public.id
+  subnet_id      = aws_subnet.public[count.index].id
+  route_table_id = aws_route_table.public.id
 }
 
-resource "aws_eip" "this_nat_gateway" {
+resource "aws_subnet" "private" {
+  count = length(local.private_cidr_subnets)
+
+  vpc_id            = aws_vpc.this.id
+  cidr_block        = local.private_cidr_subnets[count.index]
+  availability_zone = count.index < local.availability_zones_count ? data.aws_availability_zones.available.names[count.index] : data.aws_availability_zones.available.names[count.index % local.availability_zones_count]
+
+  tags = {
+    Name = "${var.name_prefix}_private_subnet_${count.index + 1}"
+  }
+}
+
+resource "aws_vpc_endpoint" "this" {
+  for_each = length(local.private_cidr_subnets) > 0 && !var.enable_nat_gateway ? toset(["ec2messages", "ssmmessages", "ssm"]) : []
+
+  service_name        = "com.amazonaws.${data.aws_region.current.name}.${each.value}"
+  vpc_id              = aws_vpc.this.id
+  subnet_ids          = [for subnet in aws_subnet.private : subnet.id]
+  security_group_ids  = [aws_security_group.vpc_endpoint[0].id]
+  vpc_endpoint_type   = "Interface"
+  private_dns_enabled = true
+
+  tags = {
+    Name = "${var.name_prefix}_${each.value}_vpc_endpoint"
+  }
+}
+
+resource "aws_security_group" "vpc_endpoint" {
+  count = length(local.private_cidr_subnets) > 0 && !var.enable_nat_gateway ? 1 : 0
+
+  name   = "${var.name_prefix}-vpc_endpoint-security-group"
+  vpc_id = aws_vpc.this.id
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = [aws_vpc.this.cidr_block]
+  }
+
+  tags = {
+    Name = "${var.name_prefix}_vpc_endpoint_security_group"
+  }
+}
+
+resource "aws_eip" "nat_gateway" {
   count = var.enable_nat_gateway ? 1 : 0
 
   vpc = true
@@ -82,16 +122,17 @@ resource "aws_eip" "this_nat_gateway" {
 resource "aws_nat_gateway" "this" {
   count = var.enable_nat_gateway ? 1 : 0
 
-  allocation_id = aws_eip.this_nat_gateway[count.index].id
-  subnet_id     = aws_subnet.this_public[0].id
-  depends_on    = [aws_internet_gateway.this]
+  allocation_id = aws_eip.nat_gateway[count.index].id
+  subnet_id     = aws_subnet.public[0].id
 
   tags = {
     Name = "${var.name_prefix}_nat_gateway"
   }
+
+  depends_on = [aws_internet_gateway.this]
 }
 
-resource "aws_route_table" "this_private" {
+resource "aws_route_table" "private" {
   vpc_id = aws_vpc.this.id
 
   dynamic "route" {
@@ -113,9 +154,9 @@ resource "aws_route_table" "this_private" {
 }
 
 # route associations private
-resource "aws_route_table_association" "this_private" {
+resource "aws_route_table_association" "private" {
   count = length(local.private_cidr_subnets)
 
-  subnet_id      = aws_subnet.this_private[count.index].id
-  route_table_id = aws_route_table.this_private.id
+  subnet_id      = aws_subnet.private[count.index].id
+  route_table_id = aws_route_table.private.id
 }
