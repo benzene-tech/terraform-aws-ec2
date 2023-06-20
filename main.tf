@@ -1,26 +1,10 @@
-locals {
-  policy_arn = sensitive("arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore")
-  assume_role_policy = sensitive(jsonencode(
-    {
-      "Version" : "2012-10-17",
-      "Statement" : {
-        "Effect" : "Allow",
-        "Principal" : {
-          "Service" : "ec2.amazonaws.com"
-        },
-        "Action" : "sts:AssumeRole"
-      }
-    }
-  ))
-}
-
 resource "aws_instance" "this" {
-  ami                    = var.instance_ami
-  instance_type          = var.instance_type
-  subnet_id              = aws_subnet.public[0].id
-  vpc_security_group_ids = [aws_security_group.instance.id]
-  user_data              = var.user_data_path != null ? templatefile(var.user_data_path, var.user_data_arguments) : null
-  iam_instance_profile   = aws_iam_instance_profile.this.name
+  ami                    = var.instance.ami
+  instance_type          = var.instance.type
+  subnet_id              = data.aws_subnet.this.id
+  vpc_security_group_ids = [aws_security_group.this.id]
+  user_data              = var.instance.user_data.path != null ? templatefile(var.instance.user_data.path, var.instance.user_data.arguments) : null
+  iam_instance_profile   = var.instance.profile_role != null ? one(aws_iam_instance_profile.this[*].name) : null
 
   root_block_device {
     encrypted = true
@@ -32,28 +16,13 @@ resource "aws_instance" "this" {
   }
 
   tags = {
-    Name = "${var.name_prefix}_instance"
+    Name = var.name_prefix
   }
 }
 
-resource "aws_iam_instance_profile" "this" {
-  name = "${var.name_prefix}-iam-instance-profile"
-  role = aws_iam_role.this.name
-}
-
-resource "aws_iam_role" "this" {
-  name               = "${var.name_prefix}-iam-role"
-  assume_role_policy = local.assume_role_policy
-}
-
-resource "aws_iam_role_policy_attachment" "this" {
-  role       = aws_iam_role.this.name
-  policy_arn = local.policy_arn
-}
-
-resource "aws_security_group" "instance" {
-  name   = "${var.name_prefix}-instance-security-group"
-  vpc_id = aws_vpc.this.id
+resource "aws_security_group" "this" {
+  name   = var.name_prefix
+  vpc_id = var.vpc_id
 
   egress {
     from_port   = 0
@@ -62,15 +31,21 @@ resource "aws_security_group" "instance" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  ingress {
-    from_port       = var.port
-    to_port         = var.port
-    protocol        = "tcp"
-    cidr_blocks     = var.enable_load_balancer ? null : var.ingress_cidr_blocks
-    security_groups = var.enable_load_balancer ? [aws_security_group.lb[0].id] : null
-  }
+  dynamic "ingress" {
+    for_each = var.instance.ingress_rules
 
-  tags = {
-    Name = "${var.name_prefix}_instance_security_group"
+    content {
+      from_port   = ingress.key
+      to_port     = ingress.key
+      protocol    = ingress.value.protocol
+      cidr_blocks = ingress.value.cidr_blocks
+    }
   }
+}
+
+resource "aws_iam_instance_profile" "this" {
+  count = var.instance.profile_role != null ? 1 : 0
+
+  name = var.name_prefix
+  role = var.instance.profile_role
 }

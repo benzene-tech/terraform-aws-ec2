@@ -6,12 +6,18 @@ Terraform module to build infrastructure for EC2 instance along with Application
 
 ```terraform
 module "ec2" {
-  source = "github.com/SanthoshNath/EC2?ref=v1.0"
+  source = "github.com/benzene-tech/ec2?ref=v1.1.0"
 
-  vpc_cidr_block = "10.0.0.0/24"
-  instance_ami   = "ami-12345"
-  instance_type  = "t2.micro"
-  port           = 80
-  name_prefix    = "example"
+  name_prefix = "example"
+  vpc_id      = "vpc-12345"
+  instance    = {
+    ami           = "ami-12345"
+    type          = "t2.micro"
+    ingress_rules = {
+      80 = {
+        protocol = "tcp"
+      }
+    }
+  }
 }
 ```
