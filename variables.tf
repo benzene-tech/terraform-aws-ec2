@@ -5,9 +5,9 @@ variable "name_prefix" {
 }
 
 variable "vpc_id" {
-  description = "VPC ID"
+  description = "VPC ID. If VPC ID is not provided default VPC will be used"
   type        = string
-  nullable    = false
+  default     = null
 }
 
 variable "instance" {
@@ -15,9 +15,11 @@ variable "instance" {
   type = object({
     ami  = string
     type = string
-    subnet = object({
+    subnet = optional(object({
       type              = optional(string, "public")
-      availability_zone = string
+      availability_zone = optional(string, null)
+      }), {
+      type = "public"
     })
     ingress_rules = optional(map(object({
       protocol    = string
@@ -37,7 +39,7 @@ variable "instance" {
   }
 
   validation {
-    condition     = alltrue([for port in var.instance.port : true if signum(port.number) == 1 && port.number % 1 == 0])
+    condition     = alltrue([for port in keys(var.instance.ingress_rules) : true if signum(port) == 1 && port % 1 == 0])
     error_message = "Port numbers should be a whole number"
   }
 }

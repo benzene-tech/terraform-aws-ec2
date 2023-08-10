@@ -22,7 +22,7 @@ resource "aws_instance" "this" {
 
 resource "aws_security_group" "this" {
   name   = var.name_prefix
-  vpc_id = var.vpc_id
+  vpc_id = data.aws_vpc.this.id
 
   egress {
     from_port   = 0
@@ -48,4 +48,9 @@ resource "aws_iam_instance_profile" "this" {
 
   name = var.name_prefix
   role = var.instance.profile_role
+}
+
+resource "random_shuffle" "this" {
+  input        = one(data.aws_availability_zones.this[*].names)
+  result_count = 1
 }
