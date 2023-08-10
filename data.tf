@@ -1,5 +1,10 @@
+data "aws_vpc" "this" {
+  id      = var.vpc_id
+  default = var.vpc_id != null ? true : null
+}
+
 data "aws_subnet" "this" {
-  vpc-id            = var.vpc_id
+  vpc-id            = data.aws_vpc.this.id
   state             = "available"
   availability-zone = var.instance.subnet.availability_zone
 

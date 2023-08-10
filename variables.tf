@@ -5,9 +5,9 @@ variable "name_prefix" {
 }
 
 variable "vpc_id" {
-  description = "VPC ID"
+  description = "VPC ID. If VPC ID is not provided default VPC will be used"
   type        = string
-  nullable    = false
+  default     = null
 }
 
 variable "instance" {

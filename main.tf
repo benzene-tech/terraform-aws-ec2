@@ -22,7 +22,7 @@ resource "aws_instance" "this" {
 
 resource "aws_security_group" "this" {
   name   = var.name_prefix
-  vpc_id = var.vpc_id
+  vpc_id = data.aws_vpc.this.id
 
   egress {
     from_port   = 0
