@@ -1,3 +1,5 @@
+data "aws_region" "this" {}
+
 data "aws_vpc" "this" {
   id      = var.vpc_id
   default = var.vpc_id == null ? true : null
