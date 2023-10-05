@@ -1,10 +1,10 @@
 resource "aws_instance" "this" {
-  ami                    = var.instance.ami
-  instance_type          = var.instance.type
-  subnet_id              = data.aws_subnet.this.id
+  ami                    = var.ami.id
+  instance_type          = var.ami.type
+  subnet_id              = one(random_shuffle.this.result)
   vpc_security_group_ids = [aws_security_group.this.id]
-  user_data              = var.instance.user_data.path != null ? templatefile(var.instance.user_data.path, var.instance.user_data.arguments) : null
-  iam_instance_profile   = var.instance.profile_role != null ? one(aws_iam_instance_profile.this[*].name) : null
+  user_data              = var.user_data.path != null ? templatefile(var.user_data.path, var.user_data.arguments) : null
+  iam_instance_profile   = var.profile_role != null ? one(aws_iam_instance_profile.this[*].name) : null
 
   root_block_device {
     encrypted = true
@@ -16,12 +16,12 @@ resource "aws_instance" "this" {
   }
 
   tags = {
-    Name = var.name_prefix
+    Name = var.name
   }
 }
 
 resource "aws_security_group" "this" {
-  name   = var.name_prefix
+  name   = var.name
   vpc_id = data.aws_vpc.this.id
 
   egress {
@@ -32,25 +32,28 @@ resource "aws_security_group" "this" {
   }
 
   dynamic "ingress" {
-    for_each = var.instance.ingress_rules
+    for_each = var.ingress_rules
 
     content {
-      from_port   = ingress.key
-      to_port     = ingress.key
-      protocol    = ingress.value.protocol
-      cidr_blocks = ingress.value.cidr_blocks
+      from_port        = ingress.key
+      to_port          = coalesce(ingress.value.to_port, ingress.key)
+      protocol         = ingress.value.protocol
+      cidr_blocks      = ingress.value.cidr_blocks
+      ipv6_cidr_blocks = ingress.value.ipv6_cidr_blocks
+      security_groups  = ingress.value.security_groups
+      self             = ingress.value.self
     }
   }
 }
 
 resource "aws_iam_instance_profile" "this" {
-  count = var.instance.profile_role != null ? 1 : 0
+  count = var.profile_role != null ? 1 : 0
 
-  name = var.name_prefix
-  role = var.instance.profile_role
+  name = var.name
+  role = var.profile_role
 }
 
 resource "random_shuffle" "this" {
-  input        = one(data.aws_availability_zones.this[*].names)
+  input        = one(data.aws_subnets.this[*].ids)
   result_count = 1
 }
