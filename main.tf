@@ -1,10 +1,10 @@
 resource "aws_instance" "this" {
-  ami                    = var.instance.ami
-  instance_type          = var.instance.type
+  ami                    = var.ami
+  instance_type          = var.type
   subnet_id              = data.aws_subnet.this.id
   vpc_security_group_ids = [aws_security_group.this.id]
-  user_data              = var.instance.user_data.path != null ? templatefile(var.instance.user_data.path, var.instance.user_data.arguments) : null
-  iam_instance_profile   = var.instance.profile_role != null ? one(aws_iam_instance_profile.this[*].name) : null
+  user_data              = var.user_data.path != null ? templatefile(var.user_data.path, var.user_data.arguments) : null
+  iam_instance_profile   = var.profile_role != null ? one(aws_iam_instance_profile.this[*].name) : null
 
   root_block_device {
     encrypted = true
@@ -32,7 +32,7 @@ resource "aws_security_group" "this" {
   }
 
   dynamic "ingress" {
-    for_each = var.instance.ingress_rules
+    for_each = var.ingress_rules
 
     content {
       from_port   = ingress.key
@@ -44,10 +44,10 @@ resource "aws_security_group" "this" {
 }
 
 resource "aws_iam_instance_profile" "this" {
-  count = var.instance.profile_role != null ? 1 : 0
+  count = var.profile_role != null ? 1 : 0
 
   name = var.name_prefix
-  role = var.instance.profile_role
+  role = var.profile_role
 }
 
 resource "random_shuffle" "this" {

@@ -1,5 +1,5 @@
 data "aws_availability_zones" "this" {
-  count = var.instance.subnet.availability_zone == null ? 1 : 0
+  count = var.subnet.availability_zone == null ? 1 : 0
 
   state = "available"
 }
@@ -12,10 +12,10 @@ data "aws_vpc" "this" {
 data "aws_subnet" "this" {
   vpc_id            = data.aws_vpc.this.id
   state             = "available"
-  availability_zone = coalesce(var.instance.subnet.availability_zone, one(random_shuffle.this.result))
+  availability_zone = coalesce(var.subnet.availability_zone, one(random_shuffle.this.result))
 
   filter {
     name   = "map-public-ip-on-launch"
-    values = [var.instance.subnet.type == "public" ? "true" : "false"]
+    values = [var.subnet.type == "public" ? "true" : "false"]
   }
 }
