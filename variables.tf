@@ -59,7 +59,7 @@ variable "ingress_rules" {
 
   validation {
     condition     = alltrue([for rule in var.ingress_rules : (can(coalescelist(rule.cidr_blocks, rule.ipv6_cidr_blocks, rule.security_groups)) || rule.self == true)])
-    error_message = "Either one of cidr_blocks, ipv6_cidr_blocks, security_groups or self needed in order to configure the source of the traffic"
+    error_message = "Either one of 'cidr_blocks', 'ipv6_cidr_blocks', 'security_groups' or 'self' needed in order to configure the source of the traffic"
   }
 }
 
@@ -76,4 +76,30 @@ variable "profile_role" {
   description = "IAM instance profile"
   type        = string
   default     = null
+}
+
+variable "spot" {
+  description = "Instance spot options"
+  type = object({
+    type                  = string
+    interruption_behavior = string
+    max_price             = optional(string, null)
+    validity              = optional(string, "")
+  })
+  default = null
+
+  validation {
+    condition     = contains(["one-time", "persistent"], var.spot.type) || var.spot.type == null
+    error_message = "Type must be one either 'one-time' or 'persistent'"
+  }
+
+  validation {
+    condition     = contains(["hibernate", "stop", "terminate"], var.spot.interruption_behavior) || var.spot.interruption_behavior == null
+    error_message = "Interruption behavior must be one among 'hibernate', 'stop' or 'terminate'"
+  }
+
+  validation {
+    condition     = can(regex("^(?:\\d+(?:\\.\\d+)?[smhdy])+$", var.spot.validity)) || can(regex("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$", var.spot.validity)) || var.spot.validity == ""
+    error_message = "Validity must be either a duration or end date represented as '1h30m' or '2018-05-13T07:44:12Z' respectively"
+  }
 }
