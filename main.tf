@@ -16,6 +16,16 @@ resource "aws_instance" "this" {
     http_tokens   = "required"
   }
 
+  dynamic "network_interface" {
+    for_each = var.network_interface != null ? [var.network_interface] : []
+
+    content {
+      device_index          = 0
+      network_interface_id  = network_interface.value
+      delete_on_termination = false
+    }
+  }
+
   dynamic "instance_market_options" {
     for_each = var.spot != null ? [var.spot] : []
 

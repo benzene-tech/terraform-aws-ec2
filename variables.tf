@@ -34,6 +34,12 @@ variable "subnet" {
   }
 }
 
+variable "network_interface" {
+  description = "Instance ENI ID"
+  type        = string
+  default     = null
+}
+
 variable "user_data" {
   description = "Instance user_data"
   type = object({
